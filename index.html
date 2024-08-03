@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Real-Time Location Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="icon.png">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Real-Time Location Tracker</h1>
+        <button id="tracking-button">Start Tracking</button>
+        <div id="location-info">
+            <div class="info-item">
+                <span class="label">Latitude:</span>
+                <span id="latitude" class="value">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Longitude:</span>
+                <span id="longitude" class="value">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Altitude:</span>
+                <span id="altitude" class="value">-</span>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+
+</html>
