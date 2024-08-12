@@ -43,8 +43,8 @@
         #arrow-container {
             display: none;
             position: relative;
-            width: 100px;
-            height: 100px;
+            width: 150px;
+            height: 150px;
             margin-bottom: 20px;
         }
 
@@ -77,122 +77,140 @@
 <div class="info" id="current-location-info">Current Location: <strong>Fetching...</strong></div>
 
 <div id="arrow-container">
-    <img id="direction-arrow" src="./arrow.png" alt="Direction Arrow">
+    <img id="direction-arrow" src="path_to_your_arrow_image.png" alt="Direction Arrow">
 </div>
 
 <script>
-    let savedLocation = { lat: null, long: null };
-    let canNavigate = false;  // This flag will be used to control when the "Navigate" button can be clicked
+let savedLocation = { lat: null, long: null };
+let canNavigate = false;  // This flag will be used to control when the "Navigate" button can be clicked
 
-    document.getElementById('location-button').addEventListener('click', function() {
-        const button = this;
+// Throttling: Only update every 1 second
+let lastUpdateTime = 0;
+const updateInterval = 1000; // 1 second
 
-        if (button.innerText === "Save Location") {
-            checkGeolocationPermission(_onGetCurrentLocation);
-        } else if (button.innerText === "Navigate" && canNavigate) {
-            // Hide the button and show the arrow
-            button.style.display = "none";
-            document.getElementById('arrow-container').style.display = "block";
+document.getElementById('location-button').addEventListener('click', function() {
+    const button = this;
 
-            // Start real-time navigation
-            navigator.geolocation.watchPosition(function(position) {
-                const currentLat = position.coords.latitude;
-                const currentLong = position.coords.longitude;
+    if (button.innerText === "Save Location") {
+        checkGeolocationPermission(_onGetCurrentLocation);
+    } else if (button.innerText === "Navigate" && canNavigate) {
+        // Hide the button and show the arrow
+        button.style.display = "none";
+        document.getElementById('arrow-container').style.display = "block";
 
+        // Start real-time navigation
+        navigator.geolocation.watchPosition(function(position) {
+            const currentLat = position.coords.latitude;
+            const currentLong = position.coords.longitude;
+
+            const currentTime = Date.now();
+            if (currentTime - lastUpdateTime > updateInterval) {
                 // Update current location info
                 document.getElementById('current-location-info').innerHTML = 
                     `Current Location: <strong>${currentLat.toFixed(6)}, ${currentLong.toFixed(6)}</strong>`;
 
                 const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
                 updateArrow(bearing);
-            }, function(error) {
-                console.log("Error watching position: " + error.message);
-                alert("Failed to update location. Please check your location settings.");
-            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-        }
-    });
 
-    function checkGeolocationPermission(callback) {
-        if (navigator.permissions && navigator.permissions.query) {
-            // Try Permissions API first
-            navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
-                const permission = result.state;
-                if (permission === 'granted' || permission === 'prompt') {
-                    callback();
-                } else {
-                    alert('Location access denied. Please enable location services.');
-                }
-            });
-        } else if (navigator.geolocation) {
-            // Fallback to Geolocation API
-            callback();
-        } else {
-            alert("Geolocation is not supported by this browser.");
-        }
-    }
-
-    function _onGetCurrentLocation() {
-        const options = {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-        };
-        console.log("Attempting to get current location...");
-        navigator.geolocation.getCurrentPosition(function(position) {
-            console.log("Location obtained:", position.coords);
-            savedLocation.lat = position.coords.latitude;
-            savedLocation.long = position.coords.longitude;
-
-            // Update saved location info
-            document.getElementById('saved-location-info').innerHTML = 
-                `Saved Location: <strong>${savedLocation.lat.toFixed(6)}, ${savedLocation.long.toFixed(6)}</strong>`;
-
-            // Disable the button and update its text
-            const button = document.getElementById('location-button');
-            button.innerText = "Navigate";
-            button.style.backgroundColor = "#007bff";
-            button.disabled = true;
-
-            // Enable navigation after 5 seconds
-            setTimeout(function() {
-                canNavigate = true;
-                button.disabled = false;
-            }, 5000);
-        }, function(error) {
-            let errorMessage = "Failed to get location. ";
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    errorMessage += "User denied the request for Geolocation.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    errorMessage += "Location information is unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    errorMessage += "The request to get user location timed out.";
-                    break;
-                case error.UNKNOWN_ERROR:
-                    errorMessage += "An unknown error occurred.";
-                    break;
+                lastUpdateTime = currentTime; // Update the last update time
             }
-            console.log("Error getting location:", error.message);
-            alert(errorMessage + " Please ensure location services are enabled and refresh the page.");
-        }, options);
+        }, function(error) {
+            console.log("Error watching position: " + error.message);
+            alert("Failed to update location. Please check your location settings.");
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
-    
-    function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
-        const dLon = targetLong - currentLong;
-        const y = Math.sin(dLon) * Math.cos(targetLat);
-        const x = Math.cos(currentLat) * Math.sin(targetLat) -
-                  Math.sin(currentLat) * Math.cos(targetLat) * Math.cos(dLon);
-        let bearing = Math.atan2(y, x);
-        bearing = bearing * (180 / Math.PI); // Convert to degrees
-        return (bearing + 360) % 360; // Normalize to 0-360
-    }
+});
 
-    function updateArrow(bearing) {
-        const arrowElement = document.getElementById('direction-arrow');
-        arrowElement.style.transform = "rotate(" + (bearing % 360) + "deg)";
+function checkGeolocationPermission(callback) {
+    if (navigator.permissions && navigator.permissions.query) {
+        // Try Permissions API first
+        navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
+            const permission = result.state;
+            if (permission === 'granted' || permission === 'prompt') {
+                callback();
+            } else {
+                alert('Location access denied. Please enable location services.');
+            }
+        });
+    } else if (navigator.geolocation) {
+        // Fallback to Geolocation API
+        callback();
+    } else {
+        alert("Geolocation is not supported by this browser.");
     }
+}
+
+function _onGetCurrentLocation() {
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+    };
+    console.log("Attempting to get current location...");
+    navigator.geolocation.getCurrentPosition(function(position) {
+        savedLocation.lat = position.coords.latitude;
+        savedLocation.long = position.coords.longitude;
+
+        // Update saved location info
+        document.getElementById('saved-location-info').innerHTML = 
+            `Saved Location: <strong>${savedLocation.lat.toFixed(6)}, ${savedLocation.long.toFixed(6)}</strong>`;
+
+        // Disable the button and update its text
+        const button = document.getElementById('location-button');
+        button.innerText = "Navigate";
+        button.style.backgroundColor = "#007bff";
+        button.disabled = true;
+
+        // Enable navigation after 5 seconds
+        setTimeout(function() {
+            canNavigate = true;
+            button.disabled = false;
+        }, 5000);
+    }, function(error) {
+        let errorMessage = "Failed to get location. ";
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage += "User denied the request for Geolocation.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage += "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                errorMessage += "The request to get user location timed out.";
+                break;
+            case error.UNKNOWN_ERROR:
+                errorMessage += "An unknown error occurred.";
+                break;
+        }
+        console.log("Error getting location:", error.message);
+        alert(errorMessage + " Please ensure location services are enabled and refresh the page.");
+    }, options);
+}
+
+function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
+    const dLat = degreesToRadians(targetLat - currentLat);
+    const dLon = degreesToRadians(targetLong - currentLong);
+
+    const y = Math.sin(dLon) * Math.cos(degreesToRadians(targetLat));
+    const x = Math.cos(degreesToRadians(currentLat)) * Math.sin(degreesToRadians(targetLat)) -
+              Math.sin(degreesToRadians(currentLat)) * Math.cos(degreesToRadians(targetLat)) * Math.cos(dLon);
+    let bearing = Math.atan2(y, x);
+    bearing = radiansToDegrees(bearing);
+    return (bearing + 360) % 360; // Normalize to 0-360
+}
+
+function degreesToRadians(degrees) {
+    return degrees * (Math.PI / 180);
+}
+
+function radiansToDegrees(radians) {
+    return radians * (180 / Math.PI);
+}
+
+function updateArrow(bearing) {
+    const arrowElement = document.getElementById('direction-arrow');
+    arrowElement.style.transform = `rotate(${bearing}deg)`;
+}
 </script>
 
 </body>
