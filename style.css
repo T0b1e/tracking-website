@@ -1,91 +1,60 @@
 body {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    background-color: #e9ecef;
+    font-family: Arial, sans-serif;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
-    overflow: hidden;
+    background: #f4f4f4;
 }
 
-.container {
-    background-color: white;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 90%;
-    max-width: 400px;
-    transition: box-shadow 0.3s ease;
+#button-container {
+    margin-bottom: 20px;
 }
 
-.container:hover {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-h1 {
-    color: #333;
-    margin-bottom: 24px;
-    font-size: 24px;
-}
-
-button {
-    padding: 12px 28px;
-    background-color: #4CAF50;
+#location-button {
+    background-color: #28a745;
     color: white;
+    padding: 15px 30px;
     border: none;
-    border-radius: 50px;
-    cursor: pointer;
+    border-radius: 5px;
     font-size: 16px;
+    cursor: pointer;
     transition: background-color 0.3s ease;
-    margin-bottom: 24px;
-    outline: none;
+}
+
+#location-button:hover {
+    background-color: #218838;
+}
+
+#location-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+#arrow-container {
+    display: none;
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin-bottom: 20px;
+}
+
+#direction-arrow {
+    position: absolute;
     width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    transition: transform 0.2s ease-in-out;
 }
 
-button:active {
-    transform: scale(0.98);
-}
-
-button:focus {
-    outline: none;
-    background-color: #43A047;
-}
-
-button:hover {
-    background-color: #43A047;
-}
-
-button.stop-tracking {
-    background-color: #e74c3c; /* Red color for stop tracking */
-}
-
-#location-info {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-}
-
-.info-item {
-    background-color: #f8f9fa;
-    padding: 12px 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.info-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.label {
-    color: #555;
-    font-weight: bold;
-}
-
-.value {
+.info {
+    margin-bottom: 10px;
+    font-size: 14px;
     color: #333;
-    font-size: 18px;
+}
+
+.info strong {
+    color: #007bff;
 }
