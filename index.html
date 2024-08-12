@@ -137,7 +137,9 @@
             timeout: 5000,
             maximumAge: 0
         };
+        console.log("Attempting to get current location...");
         navigator.geolocation.getCurrentPosition(function(position) {
+            console.log("Location obtained:", position.coords);
             savedLocation.lat = position.coords.latitude;
             savedLocation.long = position.coords.longitude;
 
@@ -157,11 +159,26 @@
                 button.disabled = false;
             }, 5000);
         }, function(error) {
-            console.log("Error getting location: " + error.message);
-            alert("Failed to get location. Please ensure location services are enabled.");
+            let errorMessage = "Failed to get location. ";
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage += "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage += "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage += "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage += "An unknown error occurred.";
+                    break;
+            }
+            console.log("Error getting location:", error.message);
+            alert(errorMessage + " Please ensure location services are enabled and refresh the page.");
         }, options);
     }
-
+    
     function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
         const dLon = targetLong - currentLong;
         const y = Math.sin(dLon) * Math.cos(targetLat);
