@@ -2,10 +2,12 @@ let savedLocation = { lat: null, long: null };
 let canNavigate = false;
 let deviceHeading = 0;
 let lastUpdateTime = 0;
-const updateInterval = 500; // Reduced interval for more frequent updates
+let currentLat = 0;
+let currentLong = 0;
+let currentBearing = 0;
+const updateInterval = 100; // Reduced interval for more frequent updates
 const arrivalThreshold = 1.0; // Distance threshold in meters for considering "arrived"
 
-// Set up the geolocation and orientation listeners
 document.addEventListener("DOMContentLoaded", function() {
     document.getElementById('location-button').addEventListener('click', function() {
         const button = this;
@@ -16,31 +18,11 @@ document.addEventListener("DOMContentLoaded", function() {
             button.style.display = "none";
             document.getElementById('arrow-container').style.display = "block";
 
+            // Watch position with throttling or debouncing
             navigator.geolocation.watchPosition(function(position) {
-                const currentLat = position.coords.latitude;
-                const currentLong = position.coords.longitude;
-
-                const currentTime = Date.now();
-                if (currentTime - lastUpdateTime > updateInterval) {
-                    document.getElementById('current-location-info').innerHTML = 
-                        `Current Location: <strong>${currentLat.toFixed(6)}, ${currentLong.toFixed(6)}</strong>`;
-
-                    const distance = calculateDistance(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-                    logToTextarea(`Distance to saved location: ${formatDistance(distance)}`);
-
-                    if (distance <= arrivalThreshold) {
-                        alert("You have arrived at the saved location!");
-                        document.getElementById('arrow-container').style.display = "none";
-                        return; // Stop further processing
-                    }
-
-                    const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-                    const adjustedBearing = (bearing - deviceHeading + 360) % 360;
-                    logToTextarea(`Bearing: ${bearing}, Adjusted Bearing: ${adjustedBearing}`);
-                    updateArrow(adjustedBearing);
-
-                    lastUpdateTime = currentTime;
-                }
+                currentLat = position.coords.latitude;
+                currentLong = position.coords.longitude;
+                updatePosition();
             }, function(error) {
                 logToTextarea("Error watching position: " + error.message);
                 alert("Failed to update location. Please check your location settings.");
@@ -51,27 +33,81 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Edit name label functionality
-document.getElementById('edit-icon').addEventListener('click', function() {
-    const nameLabel = document.getElementById('name-label');
-    const nameInput = document.getElementById('name-input');
+// Event handler for device orientation
+function handleOrientation(event) {
+    const alpha = event.alpha;
+    let adjustedHeading = alpha;
 
-    nameInput.value = nameLabel.textContent;
-    nameLabel.style.display = 'none';
-    nameInput.style.display = 'inline';
-    nameInput.focus();
-});
-
-document.getElementById('name-input').addEventListener('keypress', function(event) {
-    if (event.key === 'Enter') {
-        const nameLabel = document.getElementById('name-label');
-        const nameInput = document.getElementById('name-input');
-
-        nameLabel.textContent = nameInput.value;
-        nameLabel.style.display = 'inline';
-        nameInput.style.display = 'none';
+    if (typeof window.orientation !== 'undefined') {
+        switch (window.orientation) {
+            case 0:
+                adjustedHeading = alpha;
+                break;
+            case 90:
+                adjustedHeading = alpha - 90;
+                break;
+            case 180:
+                adjustedHeading = alpha - 180;
+                break;
+            case -90:
+            case 270:
+                adjustedHeading = alpha - 270;
+                break;
+            default:
+                adjustedHeading = alpha;
+        }
     }
-});
+
+    deviceHeading = (adjustedHeading + 360) % 360; // Normalize to 0-360
+    document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
+    logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
+    updateArrow(currentBearing);
+}
+
+// Calculate the bearing and update the arrow position
+function updatePosition() {
+    const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
+    currentBearing = bearing;
+    updateArrow(bearing);
+}
+
+// Rotate the arrow smoothly based on bearing
+function updateArrow(bearing) {
+    const arrowElement = document.getElementById('direction-arrow');
+    const adjustedBearing = (bearing - deviceHeading + 360) % 360;
+    arrowElement.style.transform = `rotate(${adjustedBearing}deg)`;
+    logToTextarea(`Updating arrow: bearing=${bearing}, adjustedBearing=${adjustedBearing}, deviceHeading=${deviceHeading}`);
+}
+
+// Function to request orientation permission on iOS
+function requestOrientationPermission() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    logToTextarea("Device orientation permission granted.");
+                } else {
+                    logToTextarea("Device orientation permission denied.");
+                    alert("Device orientation access is required for this feature.");
+                }
+            })
+            .catch(console.error);
+    } else if (window.DeviceOrientationEvent) {
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        logToTextarea("Device orientation listener added.");
+    } else if (window.orientation !== undefined) {
+        deviceHeading = window.orientation || 0;
+        window.addEventListener('orientationchange', function() {
+            deviceHeading = window.orientation || 0;
+            logToTextarea(`Orientation changed: window.orientation=${window.orientation}`);
+        }, false);
+        logToTextarea("Using window.orientation for heading.");
+    } else {
+        logToTextarea("Device does not support orientation events.");
+        alert("Your device does not support orientation events.");
+    }
+}
 
 function checkGeolocationPermission(callback) {
     if (navigator.permissions && navigator.permissions.query) {
@@ -134,68 +170,6 @@ function _onGetCurrentLocation() {
     }, options);
 }
 
-function requestOrientationPermission() {
-    // Request permission for device orientation on iOS 13+
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-            .then(permissionState => {
-                if (permissionState === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation, true);
-                    logToTextarea("Device orientation permission granted.");
-                } else {
-                    logToTextarea("Device orientation permission denied.");
-                    alert("Device orientation access is required for this feature.");
-                }
-            })
-            .catch(console.error);
-    } else if (window.DeviceOrientationEvent) {
-        // For non-iOS devices or where permission isn't required
-        window.addEventListener('deviceorientation', handleOrientation, true);
-        logToTextarea("Device orientation listener added.");
-    } else if (window.orientation !== undefined) {
-        // Fallback for Safari iOS using window.orientation
-        deviceHeading = window.orientation || 0;
-        window.addEventListener('orientationchange', function() {
-            deviceHeading = window.orientation || 0;
-            logToTextarea(`Orientation changed: window.orientation=${window.orientation}`);
-        }, false);
-        logToTextarea("Using window.orientation for heading.");
-    } else {
-        logToTextarea("Device does not support orientation events.");
-        alert("Your device does not support orientation events.");
-    }
-}
-
-function handleOrientation(event) {
-    // Combine event.alpha with window.orientation for better results on iOS
-    const alpha = event.alpha;
-    let adjustedHeading = alpha;
-
-    if (typeof window.orientation !== 'undefined') {
-        switch (window.orientation) {
-            case 0:
-                adjustedHeading = alpha;
-                break;
-            case 90:
-                adjustedHeading = alpha - 90;
-                break;
-            case 180:
-                adjustedHeading = alpha - 180;
-                break;
-            case -90:
-            case 270:
-                adjustedHeading = alpha - 270;
-                break;
-            default:
-                adjustedHeading = alpha;
-        }
-    }
-
-    deviceHeading = (adjustedHeading + 360) % 360; // Normalize to 0-360
-    document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
-    logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
-}
-
 function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
     const dLat = degreesToRadians(targetLat - currentLat);
     const dLon = degreesToRadians(targetLong - currentLong);
@@ -235,12 +209,6 @@ function degreesToRadians(degrees) {
 
 function radiansToDegrees(radians) {
     return radians * (180 / Math.PI);
-}
-
-function updateArrow(bearing) {
-    logToTextarea(`Updating arrow: bearing=${bearing}, deviceHeading=${deviceHeading}`);
-    const arrowElement = document.getElementById('direction-arrow');
-    arrowElement.style.transform = `rotate(${bearing}deg)`;
 }
 
 function logToTextarea(message) {
