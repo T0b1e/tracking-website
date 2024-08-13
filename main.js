@@ -1,7 +1,6 @@
 let savedLocation = { lat: null, long: null };
 let canNavigate = false;
 let deviceHeading = 0;
-let lastUpdateTime = 0;
 let currentLat = 0;
 let currentLong = 0;
 let currentBearing = 0;
@@ -34,12 +33,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function handleOrientation(event) {
     const alpha = event.alpha;
-    const beta = event.beta;
-    const gamma = event.gamma;
-
-    console.log(`Alpha: ${alpha}, Beta: ${beta}, Gamma: ${gamma}`); // Log the values
-
-    if (alpha === null || beta === null || gamma === null) {
+    if (alpha === null) {
         logToTextarea("Device orientation data is not available.");
         alert("Orientation data is not available. Try reloading the page or checking your device settings.");
         return;
@@ -71,10 +65,6 @@ function handleOrientation(event) {
     document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
     logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
     updateArrow(currentBearing);
-
-    if (deviceHeading === 0) {
-        alert("Please calibrate your device's compass by moving it in a figure-eight pattern.");
-    }
 }
 
 function throttledUpdatePosition() {
@@ -86,22 +76,19 @@ function throttledUpdatePosition() {
 }
 
 function updatePosition() {
-    const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-    currentBearing = bearing;
-    updateArrow(bearing);
+    if (savedLocation.lat !== null && savedLocation.long !== null) {
+        const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
+        currentBearing = bearing;
+        updateArrow(bearing);
+    }
 }
 
 // Rotate the arrow smoothly based on bearing
-let lastBearing = null;
-
 function updateArrow(bearing) {
-    if (lastBearing !== bearing) {
-        const arrowElement = document.getElementById('direction-arrow');
-        const adjustedBearing = (bearing - deviceHeading + 360) % 360;
-        arrowElement.style.transform = `rotate(${adjustedBearing}deg)`;
-        logToTextarea(`Updating arrow: bearing=${bearing}, adjustedBearing=${adjustedBearing}, deviceHeading=${deviceHeading}`);
-        lastBearing = bearing;
-    }
+    const arrowElement = document.getElementById('direction-arrow');
+    const adjustedBearing = (bearing - deviceHeading + 360) % 360; // Adjust bearing by device heading
+    arrowElement.style.transform = `rotate(${adjustedBearing}deg)`;
+    logToTextarea(`Updating arrow: bearing=${bearing}, adjustedBearing=${adjustedBearing}, deviceHeading=${deviceHeading}`);
 }
 
 // Function to request orientation permission on iOS based on Apple documentation
