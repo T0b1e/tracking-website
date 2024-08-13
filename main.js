@@ -6,47 +6,49 @@ const updateInterval = 500; // Reduced interval for more frequent updates
 const arrivalThreshold = 1.0; // Distance threshold in meters for considering "arrived"
 
 // Set up the geolocation and orientation listeners
-document.getElementById('location-button').addEventListener('click', function() {
-    const button = this;
+document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById('location-button').addEventListener('click', function() {
+        const button = this;
 
-    if (button.innerText === "Save Location") {
-        checkGeolocationPermission(_onGetCurrentLocation);
-    } else if (button.innerText === "Navigate" && canNavigate) {
-        button.style.display = "none";
-        document.getElementById('arrow-container').style.display = "block";
+        if (button.innerText === "Save Location") {
+            checkGeolocationPermission(_onGetCurrentLocation);
+        } else if (button.innerText === "Navigate" && canNavigate) {
+            button.style.display = "none";
+            document.getElementById('arrow-container').style.display = "block";
 
-        navigator.geolocation.watchPosition(function(position) {
-            const currentLat = position.coords.latitude;
-            const currentLong = position.coords.longitude;
+            navigator.geolocation.watchPosition(function(position) {
+                const currentLat = position.coords.latitude;
+                const currentLong = position.coords.longitude;
 
-            const currentTime = Date.now();
-            if (currentTime - lastUpdateTime > updateInterval) {
-                document.getElementById('current-location-info').innerHTML = 
-                    `Current Location: <strong>${currentLat.toFixed(6)}, ${currentLong.toFixed(6)}</strong>`;
+                const currentTime = Date.now();
+                if (currentTime - lastUpdateTime > updateInterval) {
+                    document.getElementById('current-location-info').innerHTML = 
+                        `Current Location: <strong>${currentLat.toFixed(6)}, ${currentLong.toFixed(6)}</strong>`;
 
-                const distance = calculateDistance(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-                document.getElementById('distance-info').innerHTML = 
-                    `Distance to Saved Location: <strong>${formatDistance(distance)}</strong>`;
+                    const distance = calculateDistance(currentLat, currentLong, savedLocation.lat, savedLocation.long);
+                    logToTextarea(`Distance to saved location: ${formatDistance(distance)}`);
 
-                if (distance <= arrivalThreshold) {
-                    alert("You have arrived at the saved location!");
-                    document.getElementById('arrow-container').style.display = "none";
-                    return; // Stop further processing
+                    if (distance <= arrivalThreshold) {
+                        alert("You have arrived at the saved location!");
+                        document.getElementById('arrow-container').style.display = "none";
+                        return; // Stop further processing
+                    }
+
+                    const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
+                    const adjustedBearing = (bearing - deviceHeading + 360) % 360;
+                    logToTextarea(`Bearing: ${bearing}, Adjusted Bearing: ${adjustedBearing}`);
+                    updateArrow(adjustedBearing);
+
+                    lastUpdateTime = currentTime;
                 }
+            }, function(error) {
+                logToTextarea("Error watching position: " + error.message);
+                alert("Failed to update location. Please check your location settings.");
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 
-                const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-                const adjustedBearing = (bearing - deviceHeading + 360) % 360;
-                updateArrow(adjustedBearing);
-
-                lastUpdateTime = currentTime;
-            }
-        }, function(error) {
-            logToTextarea("Error watching position: " + error.message);
-            alert("Failed to update location. Please check your location settings.");
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-
-        window.addEventListener('deviceorientation', handleOrientation, true);
-    }
+            window.addEventListener('deviceorientation', handleOrientation, true);
+        }
+    });
 });
 
 // Edit name label functionality
@@ -186,6 +188,7 @@ function handleOrientation(event) {
         logToTextarea(`Device orientation: alpha=${event.alpha}, beta=${event.beta}, gamma=${event.gamma}`);
     } else {
         alert("Your device does not support absolute orientation readings.");
+        logToTextarea("Device does not support absolute orientation readings.");
     }
 }
 
