@@ -1,10 +1,9 @@
 let savedLocation = { lat: null, long: null };
-let canNavigate = false;  // This flag will be used to control when the "Navigate" button can be clicked
-let deviceHeading = 0; // Initialize the device's heading to 0
-
-// Throttling: Only update every 1 second
+let canNavigate = false;
+let deviceHeading = 0;
 let lastUpdateTime = 0;
-const updateInterval = 1000; // 1 second
+const updateInterval = 500; // Reduced interval for more frequent updates
+const arrivalThreshold = 1.0; // Distance threshold in meters for considering "arrived"
 
 document.getElementById('location-button').addEventListener('click', function() {
     const button = this;
@@ -12,40 +11,45 @@ document.getElementById('location-button').addEventListener('click', function() 
     if (button.innerText === "Save Location") {
         checkGeolocationPermission(_onGetCurrentLocation);
     } else if (button.innerText === "Navigate" && canNavigate) {
-        // Hide the button and show the arrow
         button.style.display = "none";
         document.getElementById('arrow-container').style.display = "block";
 
-        // Start real-time navigation
         navigator.geolocation.watchPosition(function(position) {
             const currentLat = position.coords.latitude;
             const currentLong = position.coords.longitude;
 
             const currentTime = Date.now();
             if (currentTime - lastUpdateTime > updateInterval) {
-                // Update current location info
                 document.getElementById('current-location-info').innerHTML = 
                     `Current Location: <strong>${currentLat.toFixed(6)}, ${currentLong.toFixed(6)}</strong>`;
 
+                const distance = calculateDistance(currentLat, currentLong, savedLocation.lat, savedLocation.long);
+                document.getElementById('distance-info').innerHTML = 
+                    `Distance to Saved Location: <strong>${formatDistance(distance)}</strong>`;
+
+                if (distance <= arrivalThreshold) {
+                    alert("You have arrived at the saved location!");
+                    document.getElementById('arrow-container').style.display = "none";
+                    return; // Stop further processing
+                }
+
                 const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
-                const adjustedBearing = (bearing - deviceHeading + 360) % 360; // Adjust the bearing by the device's heading
+                const adjustedBearing = (bearing - deviceHeading + 360) % 360;
                 updateArrow(adjustedBearing);
 
-                lastUpdateTime = currentTime; // Update the last update time
+                lastUpdateTime = currentTime;
             }
         }, function(error) {
             console.log("Error watching position: " + error.message);
             alert("Failed to update location. Please check your location settings.");
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 
-        // Start listening to the device orientation
         window.addEventListener('deviceorientation', handleOrientation, true);
     }
 });
 
 function checkGeolocationPermission(callback) {
     if (navigator.permissions && navigator.permissions.query) {
-        // Try Permissions API first
         navigator.permissions.query({ name: 'geolocation' }).then(function(result) {
             const permission = result.state;
             if (permission === 'granted' || permission === 'prompt') {
@@ -55,7 +59,6 @@ function checkGeolocationPermission(callback) {
             }
         });
     } else if (navigator.geolocation) {
-        // Fallback to Geolocation API
         callback();
     } else {
         alert("Geolocation is not supported by this browser.");
@@ -73,17 +76,14 @@ function _onGetCurrentLocation() {
         savedLocation.lat = position.coords.latitude;
         savedLocation.long = position.coords.longitude;
 
-        // Update saved location info
         document.getElementById('saved-location-info').innerHTML = 
             `Saved Location: <strong>${savedLocation.lat.toFixed(6)}, ${savedLocation.long.toFixed(6)}</strong>`;
 
-        // Disable the button and update its text
         const button = document.getElementById('location-button');
         button.innerText = "Navigate";
         button.style.backgroundColor = "#007bff";
         button.disabled = true;
 
-        // Enable navigation after 5 seconds
         setTimeout(function() {
             canNavigate = true;
             button.disabled = false;
@@ -121,6 +121,27 @@ function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
     return (bearing + 360) % 360; // Normalize to 0-360
 }
 
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Radius of the Earth in meters
+    const dLat = degreesToRadians(lat2 - lat1);
+    const dLon = degreesToRadians(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(degreesToRadians(lat1)) * Math.cos(degreesToRadians(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in meters
+}
+
+function formatDistance(distance) {
+    if (distance < 1) {
+        return `${(distance * 100).toFixed(2)} cm`; // Display in centimeters
+    } else if (distance < 1000) {
+        return `${distance.toFixed(2)} m`; // Display in meters
+    } else {
+        return `${(distance / 1000).toFixed(2)} km`; // Display in kilometers
+    }
+}
+
 function degreesToRadians(degrees) {
     return degrees * (Math.PI / 180);
 }
@@ -137,6 +158,7 @@ function updateArrow(bearing) {
 function handleOrientation(event) {
     if (event.absolute) {
         deviceHeading = event.alpha; // Use the alpha value which represents the compass direction
+        document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
     } else {
         alert("Your device does not support absolute orientation readings.");
     }
