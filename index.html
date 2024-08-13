@@ -18,12 +18,21 @@
         <input type="text" id="name-input" style="display:none;" />
     </div>
     <div class="info" id="current-location-info">Current Location: <strong>Fetching...</strong></div>
-    
 
-<!-- Compass Label -->
-<div id="compass-label">
-    Compass: <strong id="compass-heading">0°</strong>
-</div>
+    <div id="arrow-container">
+        <img id="direction-arrow" src="arrow.png" alt="Direction Arrow">
+    </div>
+    
+    <!-- Compass Label -->
+    <div id="compass-label">
+        Compass: <strong id="compass-heading">0°</strong>
+    </div>
+    
+    <!-- Logging Textarea -->
+    <div id="log-container">
+        <textarea id="log-textarea" rows="10" cols="50" readonly></textarea>
+    </div>
+    
 
 <script src="./main.js"> </script>
 

@@ -191,6 +191,10 @@ function handleOrientation(event) {
 
 function logToTextarea(message) {
     const textarea = document.getElementById('log-textarea');
-    textarea.value += message + "\n";
-    textarea.scrollTop = textarea.scrollHeight; // Auto-scroll to the bottom
+    if (textarea) {
+        textarea.value += message + "\n";
+        textarea.scrollTop = textarea.scrollHeight; // Auto-scroll to the bottom
+    } else {
+        console.warn("Log textarea element not found. Log message:", message);
+    }
 }
