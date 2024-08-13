@@ -18,7 +18,6 @@ document.addEventListener("DOMContentLoaded", function() {
             button.style.display = "none";
             document.getElementById('arrow-container').style.display = "block";
 
-            // Watch position with throttling
             navigator.geolocation.watchPosition(function(position) {
                 currentLat = position.coords.latitude;
                 currentLong = position.coords.longitude;
@@ -49,6 +48,17 @@ function debounce(func, wait) {
 // Event handler for device orientation with debouncing
 const debouncedHandleOrientation = debounce(function(event) {
     const alpha = event.alpha;
+    const beta = event.beta;
+    const gamma = event.gamma;
+
+    console.log(`Alpha: ${alpha}, Beta: ${beta}, Gamma: ${gamma}`); // Log the values
+
+    if (alpha === null || beta === null || gamma === null) {
+        logToTextarea("Device orientation data is not available.");
+        alert("Orientation data is not available. Try reloading the page or checking your device settings.");
+        return;
+    }
+
     let adjustedHeading = alpha;
 
     if (typeof window.orientation !== 'undefined') {
@@ -75,6 +85,10 @@ const debouncedHandleOrientation = debounce(function(event) {
     document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
     logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
     updateArrow(currentBearing);
+
+    if (deviceHeading === 0) {
+        alert("Please calibrate your device's compass by moving it in a figure-eight pattern.");
+    }
 }, 100); // Adjust the debounce interval
 
 // Throttled update position function
@@ -107,7 +121,7 @@ function updateArrow(bearing) {
     }
 }
 
-// Function to request orientation permission on iOS
+// Function to request orientation permission on iOS based on Apple documentation
 function requestOrientationPermission() {
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         DeviceOrientationEvent.requestPermission()
@@ -120,17 +134,13 @@ function requestOrientationPermission() {
                     alert("Device orientation access is required for this feature.");
                 }
             })
-            .catch(console.error);
+            .catch(error => {
+                logToTextarea("Error requesting device orientation permission: " + error.message);
+                alert("Error requesting device orientation permission.");
+            });
     } else if (window.DeviceOrientationEvent) {
         window.addEventListener('deviceorientation', debouncedHandleOrientation, true);
         logToTextarea("Device orientation listener added.");
-    } else if (window.orientation !== undefined) {
-        deviceHeading = window.orientation || 0;
-        window.addEventListener('orientationchange', function() {
-            deviceHeading = window.orientation || 0;
-            logToTextarea(`Orientation changed: window.orientation=${window.orientation}`);
-        }, false);
-        logToTextarea("Using window.orientation for heading.");
     } else {
         logToTextarea("Device does not support orientation events.");
         alert("Your device does not support orientation events.");
