@@ -136,8 +136,8 @@ function _onGetCurrentLocation() {
 
 function requestOrientationPermission() {
     // Request permission for device orientation on iOS 13+
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission()
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
                 if (permissionState === 'granted') {
                     window.addEventListener('deviceorientation', handleOrientation, true);
@@ -164,6 +164,36 @@ function requestOrientationPermission() {
         logToTextarea("Device does not support orientation events.");
         alert("Your device does not support orientation events.");
     }
+}
+
+function handleOrientation(event) {
+    // Combine event.alpha with window.orientation for better results on iOS
+    const alpha = event.alpha;
+    let adjustedHeading = alpha;
+
+    if (typeof window.orientation !== 'undefined') {
+        switch (window.orientation) {
+            case 0:
+                adjustedHeading = alpha;
+                break;
+            case 90:
+                adjustedHeading = alpha - 90;
+                break;
+            case 180:
+                adjustedHeading = alpha - 180;
+                break;
+            case -90:
+            case 270:
+                adjustedHeading = alpha - 270;
+                break;
+            default:
+                adjustedHeading = alpha;
+        }
+    }
+
+    deviceHeading = (adjustedHeading + 360) % 360; // Normalize to 0-360
+    document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
+    logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
 }
 
 function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
@@ -211,17 +241,6 @@ function updateArrow(bearing) {
     logToTextarea(`Updating arrow: bearing=${bearing}, deviceHeading=${deviceHeading}`);
     const arrowElement = document.getElementById('direction-arrow');
     arrowElement.style.transform = `rotate(${bearing}deg)`;
-}
-
-function handleOrientation(event) {
-    if (event.absolute) {
-        deviceHeading = event.alpha; // Use the alpha value which represents the compass direction
-        document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
-        logToTextarea(`Device orientation: alpha=${event.alpha}, beta=${event.beta}, gamma=${event.gamma}`);
-    } else {
-        deviceHeading = 0; // Fallback to 0 if not absolute
-        logToTextarea("Device does not support absolute orientation readings. Setting deviceHeading to 0.");
-    }
 }
 
 function logToTextarea(message) {
