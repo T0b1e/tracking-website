@@ -32,21 +32,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Debounce function to limit orientation updates
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Event handler for device orientation with debouncing
-const debouncedHandleOrientation = debounce(function(event) {
+function handleOrientation(event) {
     const alpha = event.alpha;
     const beta = event.beta;
     const gamma = event.gamma;
@@ -89,10 +75,7 @@ const debouncedHandleOrientation = debounce(function(event) {
     if (deviceHeading === 0) {
         alert("Please calibrate your device's compass by moving it in a figure-eight pattern.");
     }
-}, 100); // Adjust the debounce interval
-
-// Throttled update position function
-let lastGeolocationUpdateTime = 0;
+}
 
 function throttledUpdatePosition() {
     const now = Date.now();
@@ -127,7 +110,7 @@ function requestOrientationPermission() {
         DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
                 if (permissionState === 'granted') {
-                    window.addEventListener('deviceorientation', debouncedHandleOrientation, true);
+                    window.addEventListener('deviceorientation', handleOrientation, true);
                     logToTextarea("Device orientation permission granted.");
                 } else {
                     logToTextarea("Device orientation permission denied.");
@@ -139,7 +122,7 @@ function requestOrientationPermission() {
                 alert("Error requesting device orientation permission.");
             });
     } else if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', debouncedHandleOrientation, true);
+        window.addEventListener('deviceorientation', handleOrientation, true);
         logToTextarea("Device orientation listener added.");
     } else {
         logToTextarea("Device does not support orientation events.");
