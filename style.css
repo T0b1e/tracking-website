@@ -46,7 +46,7 @@ body {
     width: 100%;
     height: 100%;
     transform-origin: center center;
-    transition: transform 0.2s ease-in-out;
+    transition: transform 0.5s ease-in-out;
 }
 
 .info {
@@ -59,7 +59,6 @@ body {
     color: #007bff;
 }
 
-
 #compass-label {
     position: absolute;
     top: 10px;
@@ -69,4 +68,21 @@ body {
     padding: 5px 10px;
     border-radius: 5px;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+}
+
+#name-label {
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+#edit-icon {
+    cursor: pointer;
+    font-size: 18px;
+    color: #007bff;
+}
+
+#name-input {
+    font-size: 18px;
+    padding: 2px;
+    margin-right: 10px;
 }

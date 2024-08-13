@@ -5,6 +5,7 @@ let lastUpdateTime = 0;
 const updateInterval = 500; // Reduced interval for more frequent updates
 const arrivalThreshold = 1.0; // Distance threshold in meters for considering "arrived"
 
+// Set up the geolocation and orientation listeners
 document.getElementById('location-button').addEventListener('click', function() {
     const button = this;
 
@@ -40,11 +41,33 @@ document.getElementById('location-button').addEventListener('click', function() 
                 lastUpdateTime = currentTime;
             }
         }, function(error) {
-            console.log("Error watching position: " + error.message);
+            logToTextarea("Error watching position: " + error.message);
             alert("Failed to update location. Please check your location settings.");
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 
         window.addEventListener('deviceorientation', handleOrientation, true);
+    }
+});
+
+// Edit name label functionality
+document.getElementById('edit-icon').addEventListener('click', function() {
+    const nameLabel = document.getElementById('name-label');
+    const nameInput = document.getElementById('name-input');
+
+    nameInput.value = nameLabel.textContent;
+    nameLabel.style.display = 'none';
+    nameInput.style.display = 'inline';
+    nameInput.focus();
+});
+
+document.getElementById('name-input').addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        const nameLabel = document.getElementById('name-label');
+        const nameInput = document.getElementById('name-input');
+
+        nameLabel.textContent = nameInput.value;
+        nameLabel.style.display = 'inline';
+        nameInput.style.display = 'none';
     }
 });
 
@@ -71,7 +94,7 @@ function _onGetCurrentLocation() {
         timeout: 5000,
         maximumAge: 0
     };
-    console.log("Attempting to get current location...");
+    logToTextarea("Attempting to get current location...");
     navigator.geolocation.getCurrentPosition(function(position) {
         savedLocation.lat = position.coords.latitude;
         savedLocation.long = position.coords.longitude;
@@ -104,7 +127,7 @@ function _onGetCurrentLocation() {
                 errorMessage += "An unknown error occurred.";
                 break;
         }
-        console.log("Error getting location:", error.message);
+        logToTextarea("Error getting location: " + error.message);
         alert(errorMessage + " Please ensure location services are enabled and refresh the page.");
     }, options);
 }
@@ -151,6 +174,7 @@ function radiansToDegrees(radians) {
 }
 
 function updateArrow(bearing) {
+    logToTextarea(`Updating arrow: bearing=${bearing}, deviceHeading=${deviceHeading}`);
     const arrowElement = document.getElementById('direction-arrow');
     arrowElement.style.transform = `rotate(${bearing}deg)`;
 }
@@ -159,7 +183,14 @@ function handleOrientation(event) {
     if (event.absolute) {
         deviceHeading = event.alpha; // Use the alpha value which represents the compass direction
         document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
+        logToTextarea(`Device orientation: alpha=${event.alpha}, beta=${event.beta}, gamma=${event.gamma}`);
     } else {
         alert("Your device does not support absolute orientation readings.");
     }
+}
+
+function logToTextarea(message) {
+    const textarea = document.getElementById('log-textarea');
+    textarea.value += message + "\n";
+    textarea.scrollTop = textarea.scrollHeight; // Auto-scroll to the bottom
 }

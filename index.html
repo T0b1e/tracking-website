@@ -8,16 +8,17 @@
 </head>
 <body>
 
-<div id="button-container">
-    <button id="location-button">Save Location</button>
-</div>
-
-<div class="info" id="saved-location-info">Saved Location: <strong>Not Saved</strong></div>
-<div class="info" id="current-location-info">Current Location: <strong>Fetching...</strong></div>
-
-<div id="arrow-container">
-    <img id="direction-arrow" src="arrow.png" alt="Direction Arrow">
-</div>
+    <div id="button-container">
+        <button id="location-button">Save Location</button>
+    </div>
+    
+    <div class="info" id="saved-location-info">
+        <span id="name-label">My Location</span>
+        <span id="edit-icon">&#9998;</span>
+        <input type="text" id="name-input" style="display:none;" />
+    </div>
+    <div class="info" id="current-location-info">Current Location: <strong>Fetching...</strong></div>
+    
 
 <!-- Compass Label -->
 <div id="compass-label">
