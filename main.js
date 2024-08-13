@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 alert("Failed to update location. Please check your location settings.");
             }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 
-            window.addEventListener('deviceorientation', handleOrientation, true);
+            requestOrientationPermission();
         }
     });
 });
@@ -134,6 +134,38 @@ function _onGetCurrentLocation() {
     }, options);
 }
 
+function requestOrientationPermission() {
+    // Request permission for device orientation on iOS 13+
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission()
+            .then(permissionState => {
+                if (permissionState === 'granted') {
+                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    logToTextarea("Device orientation permission granted.");
+                } else {
+                    logToTextarea("Device orientation permission denied.");
+                    alert("Device orientation access is required for this feature.");
+                }
+            })
+            .catch(console.error);
+    } else if (window.DeviceOrientationEvent) {
+        // For non-iOS devices or where permission isn't required
+        window.addEventListener('deviceorientation', handleOrientation, true);
+        logToTextarea("Device orientation listener added.");
+    } else if (window.orientation !== undefined) {
+        // Fallback for Safari iOS using window.orientation
+        deviceHeading = window.orientation || 0;
+        window.addEventListener('orientationchange', function() {
+            deviceHeading = window.orientation || 0;
+            logToTextarea(`Orientation changed: window.orientation=${window.orientation}`);
+        }, false);
+        logToTextarea("Using window.orientation for heading.");
+    } else {
+        logToTextarea("Device does not support orientation events.");
+        alert("Your device does not support orientation events.");
+    }
+}
+
 function calculateBearing(currentLat, currentLong, targetLat, targetLong) {
     const dLat = degreesToRadians(targetLat - currentLat);
     const dLon = degreesToRadians(targetLong - currentLong);
@@ -187,8 +219,8 @@ function handleOrientation(event) {
         document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
         logToTextarea(`Device orientation: alpha=${event.alpha}, beta=${event.beta}, gamma=${event.gamma}`);
     } else {
-        alert("Your device does not support absolute orientation readings.");
-        logToTextarea("Device does not support absolute orientation readings.");
+        deviceHeading = 0; // Fallback to 0 if not absolute
+        logToTextarea("Device does not support absolute orientation readings. Setting deviceHeading to 0.");
     }
 }
 
