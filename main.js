@@ -5,7 +5,7 @@ let lastUpdateTime = 0;
 let currentLat = 0;
 let currentLong = 0;
 let currentBearing = 0;
-const updateInterval = 100; // Reduced interval for more frequent updates
+const updateInterval = 500; // Increased interval to reduce load
 const arrivalThreshold = 1.0; // Distance threshold in meters for considering "arrived"
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -18,11 +18,11 @@ document.addEventListener("DOMContentLoaded", function() {
             button.style.display = "none";
             document.getElementById('arrow-container').style.display = "block";
 
-            // Watch position with throttling or debouncing
+            // Watch position with throttling
             navigator.geolocation.watchPosition(function(position) {
                 currentLat = position.coords.latitude;
                 currentLong = position.coords.longitude;
-                updatePosition();
+                throttledUpdatePosition();
             }, function(error) {
                 logToTextarea("Error watching position: " + error.message);
                 alert("Failed to update location. Please check your location settings.");
@@ -33,8 +33,21 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// Event handler for device orientation
-function handleOrientation(event) {
+// Debounce function to limit orientation updates
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Event handler for device orientation with debouncing
+const debouncedHandleOrientation = debounce(function(event) {
     const alpha = event.alpha;
     let adjustedHeading = alpha;
 
@@ -62,9 +75,19 @@ function handleOrientation(event) {
     document.getElementById('compass-heading').textContent = `${deviceHeading.toFixed(0)}°`;
     logToTextarea(`Device orientation: alpha=${event.alpha}, adjustedHeading=${adjustedHeading}, window.orientation=${window.orientation}`);
     updateArrow(currentBearing);
+}, 100); // Adjust the debounce interval
+
+// Throttled update position function
+let lastGeolocationUpdateTime = 0;
+
+function throttledUpdatePosition() {
+    const now = Date.now();
+    if (now - lastGeolocationUpdateTime > updateInterval) {
+        updatePosition();
+        lastGeolocationUpdateTime = now;
+    }
 }
 
-// Calculate the bearing and update the arrow position
 function updatePosition() {
     const bearing = calculateBearing(currentLat, currentLong, savedLocation.lat, savedLocation.long);
     currentBearing = bearing;
@@ -72,11 +95,16 @@ function updatePosition() {
 }
 
 // Rotate the arrow smoothly based on bearing
+let lastBearing = null;
+
 function updateArrow(bearing) {
-    const arrowElement = document.getElementById('direction-arrow');
-    const adjustedBearing = (bearing - deviceHeading + 360) % 360;
-    arrowElement.style.transform = `rotate(${adjustedBearing}deg)`;
-    logToTextarea(`Updating arrow: bearing=${bearing}, adjustedBearing=${adjustedBearing}, deviceHeading=${deviceHeading}`);
+    if (lastBearing !== bearing) {
+        const arrowElement = document.getElementById('direction-arrow');
+        const adjustedBearing = (bearing - deviceHeading + 360) % 360;
+        arrowElement.style.transform = `rotate(${adjustedBearing}deg)`;
+        logToTextarea(`Updating arrow: bearing=${bearing}, adjustedBearing=${adjustedBearing}, deviceHeading=${deviceHeading}`);
+        lastBearing = bearing;
+    }
 }
 
 // Function to request orientation permission on iOS
@@ -85,7 +113,7 @@ function requestOrientationPermission() {
         DeviceOrientationEvent.requestPermission()
             .then(permissionState => {
                 if (permissionState === 'granted') {
-                    window.addEventListener('deviceorientation', handleOrientation, true);
+                    window.addEventListener('deviceorientation', debouncedHandleOrientation, true);
                     logToTextarea("Device orientation permission granted.");
                 } else {
                     logToTextarea("Device orientation permission denied.");
@@ -94,7 +122,7 @@ function requestOrientationPermission() {
             })
             .catch(console.error);
     } else if (window.DeviceOrientationEvent) {
-        window.addEventListener('deviceorientation', handleOrientation, true);
+        window.addEventListener('deviceorientation', debouncedHandleOrientation, true);
         logToTextarea("Device orientation listener added.");
     } else if (window.orientation !== undefined) {
         deviceHeading = window.orientation || 0;
